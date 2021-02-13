@@ -300,7 +300,8 @@ bot.onText(/\/s(.+)/, (msg, [source, match]) => {
 
             const caption = `Название: ${sub.name}\nЦена: ${sub.price}\nКатегория: ${sub.category}\n`
 
-            bot.sendMessage(chatId, caption, {
+            bot.sendPhoto(chatId, sub.url, {
+                caption: caption,
                 reply_markup: {
                     inline_keyboard: [
                         [
@@ -351,15 +352,18 @@ bot.on('callback_query', query => {
 bot.on('inline_query', query => {
     SubsGeneral.find({}).then(subs => {
         const results = subs.map(s => {
-            const caption = `Название: ${s.name}\nЦена: ${s.price}\nКатегория: ${s.category}\n`
+            const caption = `Название: ${s.name}\nЦена: ${s.price}\nКатегория: ${s.category}\n@rtref_bot`
 
             return {
                 id: s._id,
-                type: 'article',
-                title: s.name,
-                input_message_content: {
-                    message_text: s.name + '\n@rtref_bot'
-                },
+                type: 'photo',
+                photo_url: s.url,
+                thumb_url: s.url,
+                // type: 'article',
+                // title: s.name,
+                // input_message_content: {
+                //     message_text: s.name + '\n@rtref_bot'
+                // },
                 caption: caption,
                 reply_markup: {
                     inline_keyboard: [
@@ -455,6 +459,7 @@ function showFavouriteSubs(chatId, telegramId) {
                     let html = ''
 
                     if (subgeneral.length) {
+                        html += 'Общие подписки: \n'
                         html += subgeneral.map((s, i) => {
                             return `<b>${i+1}</b> ${s.name} - <b>${s.price}</b> (/s${s._id})`
                         }).join('\n')
