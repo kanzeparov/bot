@@ -1,0 +1,22 @@
+{
+  "subsGeneral": [
+    {
+      "uid": "s1",
+      "name": "Nachalo",
+      "price": 2,
+      "date": "Nachalo",
+      "url": "Nachalo",
+      "unsub": "Nachalo",
+      "category": "Nachalo"
+    },
+    {
+      "uid": "s1",
+      "name": "Nachalo2",
+      "price": 4,
+      "date": "Nachalo2",
+      "url": "Nachalo2",
+      "unsub": "Nachalo2",
+      "category": "Nachalo2"
+    }
+  ]
+}
