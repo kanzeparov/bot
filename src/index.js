@@ -23,6 +23,7 @@ const User = mongoose.model('users')
 const ACTION_TYPE = {
     TOGGLE_SUB: 'ts',
     TOGGLE_RM: 'rm',
+    CHANGE_PRICE: 'cp',
     NAME: 'n'
 }
 
@@ -41,6 +42,7 @@ var categorybool = false
 var urlbool = false
 var datebool = false
 
+var changebool = false
 
 //new Subs(newSubs).save()
 
@@ -65,6 +67,7 @@ const bot = new TelegramBot(TOKEN, {
 bot.on('message', (msg) => {
     //console.log(msg)
     const chatId= helper.getChatId(msg)
+    console.log(newSubs)
 
 
     if(namebool) {
@@ -97,9 +100,22 @@ bot.on('message', (msg) => {
         datebool = false
     }
 
+    if(changebool) {
+        console.log(msg.text)
+        try {
+            newSubs.price = msg.text
+        } catch (e) {
+            console.log(e)
+        }
+        changebool = false
+    }
+
 
 
     switch (msg.text) {
+        case kb.menu.stat:
+            showStatistic(chatId, msg.from.id)
+            break
         case kb.home.favourite:
             showFavouriteSubs(chatId, msg.from.id)
             break
@@ -132,6 +148,19 @@ bot.on('message', (msg) => {
             bot.sendMessage(chatId, 'Посчитаем подписки', {
                 reply_markup: {keyboard: keyboard.home}
             })
+
+            setTimeout(() => {
+
+                bot.sendMessage(chatId, 'Посчитаем подписки', {
+                    reply_markup: {keyboard: keyboard.home}
+                })
+                newSubs.name = ""
+                newSubs.price = 0
+                newSubs.category = ""
+                newSubs.url = ""
+                newSubs.date = '01.01.1990'
+                newSubs.uid = ""
+            }, 3000)
             break
         case kb.subs.create:
             if (newSubs.name !== "") {
@@ -144,29 +173,29 @@ bot.on('message', (msg) => {
 
                 }).catch(err => console.log(err))
 
-                    let userPromise
+                let userPromise
 
 
-                    User.findOne({telegramId: msg.from.id})
-                        .then(user => {
-                            if(user) {
-                                {
-                                    console.log(newsub)
-                                    user.mysubs.push(newSubs.name)
-                                }
-                                userPromise = user
-                            } else {
-                                userPromise = new User({
-                                    telegramId: msg.from.id,
-                                    mysubs: [newSubs.name]
-                                })
+                User.findOne({telegramId: msg.from.id})
+                    .then(user => {
+                        if(user) {
+                            {
+                                console.log(newsub)
+                                user.mysubs.push(newSubs.name)
                             }
+                            userPromise = user
+                        } else {
+                            userPromise = new User({
+                                telegramId: msg.from.id,
+                                mysubs: [newSubs.name]
+                            })
+                        }
 
 
-                            userPromise.save().then(_ => {
-                                console.log("ok")
-                            }).catch(err => console.log(err))
+                        userPromise.save().then(_ => {
+                            console.log("ok")
                         }).catch(err => console.log(err))
+                    }).catch(err => console.log(err))
 
                 setTimeout(() => {
 
@@ -187,6 +216,63 @@ bot.on('message', (msg) => {
 
             } else {
                 bot.sendMessage(chatId, 'Название не введено')
+            }
+
+            break
+        case kb.subs.name_change:
+            if (newSubs.price !== 0) {
+
+
+                var newsub = new Subs(newSubs).save().then(_ => {
+                    console.log("Ok")
+                    console.log(newsub)
+
+
+                }).catch(err => console.log(err))
+
+                let userPromise
+
+
+                User.findOne({telegramId: msg.from.id})
+                    .then(user => {
+                        if(user) {
+                            {
+                                console.log(newsub)
+                                user.mysubs.push(newSubs.name)
+                            }
+                            userPromise = user
+                        } else {
+                            userPromise = new User({
+                                telegramId: msg.from.id,
+                                mysubs: [newSubs.name]
+                            })
+                        }
+
+
+                        userPromise.save().then(_ => {
+                            console.log("ok")
+                        }).catch(err => console.log(err))
+                    }).catch(err => console.log(err))
+
+                setTimeout(() => {
+
+                    bot.sendMessage(chatId, 'Посчитаем подписки', {
+                        reply_markup: {keyboard: keyboard.home}
+                    })
+                    newSubs.name = ""
+                    newSubs.price = 0
+                    newSubs.category = ""
+                    newSubs.url = ""
+                    newSubs.date = '01.01.1990'
+                    newSubs.uid = ""
+                }, 3000)
+
+
+
+
+
+            } else {
+                bot.sendMessage(chatId, 'Цена не введена')
             }
 
             break
@@ -249,10 +335,14 @@ bot.onText(/\/start/,msg => {
 })
 
 bot.onText(/\/s(.+)/, (msg, [source, match]) => {
+
     const sub_id = helper.getItem_id(source)
     const chatId = helper.getChatId(msg)
 
     console.log(sub_id)
+    if(sub_id === 'tart') {
+        return
+    }
 
     Promise.all([
         SubsGeneral.findOne(({_id: sub_id})),
@@ -314,9 +404,12 @@ bot.onText(/\/s(.+)/, (msg, [source, match]) => {
                                 })
                             },
                             {
-                                text: `Ссылка на отписку - ${sub.name}`,
+                                text: `Изменить цену - ${sub.name}`,
                                 // url добавить ниже
-                                callback_data: sub.unsub
+                                callback_data: JSON.stringify({
+                                    type: ACTION_TYPE.CHANGE_PRICE,
+                                    sub_id: sub._id
+                                })
                             }
                         ]
                     ]
@@ -340,6 +433,11 @@ bot.on('callback_query', query => {
     const { type } = data
     if (type === ACTION_TYPE.TOGGLE_SUB) {
         toggleFavouriteSub(userId, query.id, data)
+    }
+
+    if (type === ACTION_TYPE.CHANGE_PRICE) {
+        console.log("change price")
+        changePriceSub(userId, query.id, data)
     }
 
     if (type === ACTION_TYPE.TOGGLE_RM) {
@@ -412,6 +510,77 @@ function sendHTML(chatId, html, kbName = null) {
     bot.sendMessage(chatId, html, options)
 }
 
+function changePriceSub(userId, queryId, {sub_id}) {
+    let userPromise
+
+    console.log(sub_id)
+
+    sendHTML(userId, 'Введите цену в рублях', 'changePrice')
+    changebool = true
+
+
+    Promise.all([
+        User.findOne({telegramId: userId})
+        ,
+        SubsGeneral.findOne(({_id: sub_id}))
+    ])
+        .then(([user, sub])=> {
+
+            console.log(user)
+            console.log(sub)
+
+            newSubs.name = sub.name
+            newSubs.category = sub.category
+            newSubs.date = sub.date
+
+            if(newSubs.price !== 0) {
+                console.log(newSubs.price)
+
+                var newsub = new Subs(newSubs).save().then(_ => {
+                    console.log("Ok")
+                    console.log(newsub)
+
+
+                }).catch(err => console.log(err))
+
+
+                if (user) {
+                    {
+                        console.log(newsub)
+                        user.mysubs.push(newSubs.name)
+                    }
+                    userPromise = user
+                } else {
+                    userPromise = new User({
+                        telegramId: msg.from.id,
+                        mysubs: [newSubs.name]
+                    })
+                }
+
+
+                userPromise.save().then(_ => {
+                    console.log("ok")
+                }).catch(err => console.log(err))
+
+
+                setTimeout(() => {
+
+                    bot.sendMessage(user, 'Посчитаем подписки', {
+                        reply_markup: {keyboard: keyboard.home}
+                    })
+                    newSubs.name = ""
+                    newSubs.price = 0
+                    newSubs.category = ""
+                    newSubs.url = ""
+                    newSubs.date = '01.01.1990'
+                    newSubs.uid = ""
+                    changebool = false
+                }, 3000)
+            }
+        }).catch(err => console.log(err))
+
+}
+
 function toggleFavouriteSub(userId, queryId, {sub_id, isFav}) {
     let userPromise
 
@@ -442,8 +611,74 @@ function toggleFavouriteSub(userId, queryId, {sub_id, isFav}) {
         }).catch(err => console.log(err))
 }
 
+function showStatistic(chatId, telegramId) {
+    console.log("statistic")
+    User.findOne({telegramId})
+        .then(user => {
+            console.log(user)
+            if(user) {
+                Promise.all([
+                    SubsGeneral.find(({_id: {'$in': user.subs}}))
+                    ,
+                    Subs.find(({name: {'$in': user.mysubs}}))
+                ])
+                    .then(([subgeneral, sub])=> {
+                        console.log(subgeneral.length)
+                        console.log(sub.length)
+                        let html = ''
+                        let sumgen = 0;
+                        let summy = 0;
+                        let sum = 0;
+
+                        if (subgeneral.length) {
+                            html += 'Общие подписки: \n'
+                            html += subgeneral.map((s, i) => {
+                                return `<b>${i+1}</b> ${s.name} - <b>${s.price}</b> (/s${s._id})`
+                            }).join('\n')
+                            html += '\n'
+                            sumgen = subgeneral.reduce((acc, val) => {
+                                return acc + val.price
+                            },0)
+                            html += 'Сумма общих подписок - ' + sumgen + '\n\n'
+                            console.log(sumgen)
+                            sum += sumgen
+                        }
+                        if (sub.length) {
+                            html += 'Мои подписки: \n'
+                            html += sub.map((s, i) => {
+                                return `<b>${i+1}</b> ${s.name} - <b>${s.price}</b> (/s${s._id})`
+                            }).join('\n')
+                            summy = sub.reduce((acc, val) => {
+                                return acc + val.price
+                            },0)
+                            html += '\nСумма моих подписок - ' + summy + '\n'
+                            console.log(summy)
+                            sum += summy
+                        }
+
+                        if (sum !== 0) {
+                            html += '\nОбщая ежемесячная сумма подписок: ' + sum + '\n'
+                        }
+
+                        // if(sub.length) {
+                        //     html += sub.map((s, i) => {
+                        //         return `<b>${i+1}</b> ${s.name} - <b>${s.price}</b> (/s${s._id})`
+                        //     }).join('\n')
+                        // }
+                        if(sub.length === 0 && subgeneral.length === 0) {
+                            html = 'Вы пока ничего не добавили!'
+                        }
+
+                        sendHTML(chatId, html, 'menu_sub')
+                    }).catch(e => console.log(e))
+            } else {
+                sendHTML(chatId, 'Вы пока ничего не добавили!!', 'menu_sub')
+            }
+        }).catch(e => console.log(e))
+}
 
 function showFavouriteSubs(chatId, telegramId) {
+    console.log("favourite")
     User.findOne({telegramId})
         .then(user => {
             console.log(user)
@@ -480,10 +715,10 @@ function showFavouriteSubs(chatId, telegramId) {
                         html = 'Вы пока ничего не добавили!'
                     }
 
-                    sendHTML(chatId, html, 'home')
+                    sendHTML(chatId, html, 'menu_sub')
                 }).catch(e => console.log(e))
             } else {
-                sendHTML(chatId, 'Вы пока ничего не добавили!!', 'home')
+                sendHTML(chatId, 'Вы пока ничего не добавили!!', 'menu_sub')
             }
         }).catch(e => console.log(e))
 }

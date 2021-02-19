@@ -11,12 +11,16 @@ module.exports = {
     },
     subs: {
         mysub: 'Создать свою подписку',
+        name_change: 'Изменить цену',
         create: 'Создать',
         cancel: 'Отмена'
     },
     action: {
         add: 'Добавить подписку',
         remove: 'Удалить подписку'
+    },
+    menu: {
+        stat: 'Статистика'
     },
     back: 'Назад'
 }
